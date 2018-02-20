@@ -62,4 +62,4 @@ def load_test_data():
     return images, cls, one_hot_encoded(class_numbers=cls, num_classes=num_classes)
 
 
-load_training_data()
+#load_training_data()
