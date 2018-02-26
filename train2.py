@@ -17,14 +17,14 @@ NUM_CLASSES = 10
 train_x, _, train_y = input_data.load_training_data()
 test_x, _, test_y = input_data.load_test_data()
 # hyper parameters
-learning_rate = 0.001
-training_epochs = 20
+learning_rate = 0.0001
+training_epochs = 10
 batch_size = 100
 
 TOWER_NAME = 'tower'
 
 def next_batch(i, batch_size):
-    batch_num = int(50000 / batch_size)
+    batch_num = int(100 / batch_size)
     if(i > batch_num - 1):
         while(i > batch_num):
             i -= batch_num
@@ -72,9 +72,10 @@ class Model:
         self.Y = tf.placeholder(tf.float16, [None, 10])
         self.training = tf.placeholder(tf.bool)
         with tf.variable_scope('conv1') as scope:
+            bn1 = tf.layers.batch_normalization(self.X,training=self.training)
             kernel = _variable_with_weight_decay('weights',
                              shape =[5, 5, 3, 64], stddev=5e-2,wd=None)
-            conv = tf.nn.conv2d(self.X, kernel, [1, 1, 1, 1],
+            conv = tf.nn.conv2d(bn1, kernel, [1, 1, 1, 1],
                                 padding='SAME')
             biases = _variable_on_cpu('biases', [64],
                                         tf.constant_initializer(0.0))
@@ -131,8 +132,8 @@ class Model:
             labels=labels, logits=softmax_linear)
         self.cost = tf.reduce_mean(cross_entropy, name='cross_entropy')
         self.optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(self.cost)
-
-
+        correct_prediction = tf.equal(tf.argmax(softmax_linear,1), tf.argmax(self.Y, 1))
+        self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
     def predict(self, x_test, training=False):
         return self.sess.run(self.logits,
                              feed_dict={self.X: x_test, self.training: training})
@@ -158,7 +159,7 @@ print('Learning Started!')
 # train my model
 for epoch in range(training_epochs):
     avg_cost = 0
-    total_batch = int(50000 / batch_size)
+    total_batch = int(100 / batch_size)
 
     for i in range(total_batch):
         batch_x, batch_y = next_batch(i, batch_size)

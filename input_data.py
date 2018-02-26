@@ -25,29 +25,37 @@ def _unpickle(filename):
     with open(file_path, mode='rb') as file:
         data = pickle.load(file, encoding='bytes')
     return data
-def _convert_images(raw):
+def _convert_images(raw, is_convert):
     raw_float = np.array(raw, dtype=float) / 255.0
     images = raw_float.reshape([-1, num_channels, img_size, img_size])
+    #print(images.shape)
     # Reorder the indices of the array.
+    if is_convert is True:
+        for i in range(images_per_file):
+            images[i] = np.fliplr(images[i])
+        images = np.fliplr(images)
     images = images.transpose([0, 2, 3, 1])
+    #print(images.shape)
+    #print(images[1])
     return images
-def _load_data(filename):
+def _load_data(filename, is_convert):
     data = _unpickle(filename)
     # Get the raw images.
     raw_images = data[b'data']
     # Get the class-numbers for each image. Convert to numpy-array.
     cls = np.array(data[b'labels'])
     # Convert the images.
-    images = _convert_images(raw_images)
+    images = _convert_images(raw_images, is_convert)
     return images, cls
-def load_training_data():
+
+def load_training_data(is_convert):
     images = np.zeros(shape=[num_images_train, img_size, img_size, num_channels], dtype=float)
     cls = np.zeros(shape=[num_images_train], dtype=int)
 
     begin = 0
 
     for i in range(num_files_train):
-        images_batch, cls_batch = _load_data(filename='data_batch_'+str(i+1))
+        images_batch, cls_batch = _load_data(filename='data_batch_'+str(i+1), is_convert=is_convert)
         num_images = len(images_batch)
         end = begin + num_images
 
@@ -57,9 +65,8 @@ def load_training_data():
 
         begin = end
     return images, cls, one_hot_encoded(class_numbers=cls,num_classes = num_classes)
-def load_test_data():
-    images, cls = _load_data(filename="test_batch")
+def load_test_data(is_convert):
+    images, cls = _load_data(filename="test_batch", is_convert=is_convert)
     return images, cls, one_hot_encoded(class_numbers=cls, num_classes=num_classes)
-
 
 #load_training_data()
