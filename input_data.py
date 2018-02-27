@@ -32,8 +32,8 @@ def _convert_images(raw, is_convert):
     # Reorder the indices of the array.
     if is_convert is True:
         for i in range(images_per_file):
-            images[i] = np.fliplr(images[i])
-        images = np.fliplr(images)
+            for j in range(3):
+                images[i][j] = np.fliplr(images[i][j])
     images = images.transpose([0, 2, 3, 1])
     #print(images.shape)
     #print(images[1])

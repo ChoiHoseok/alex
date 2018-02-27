@@ -8,31 +8,23 @@ train_x, _, train_y = input_data.load_training_data(is_convert)
 test_x, _, test_y = input_data.load_test_data(is_convert)
 is_convert = True
 train_convert_x, _, train_convert_y = input_data.load_training_data(is_convert)
+total_x = np.append(train_x,train_convert_x, axis = 0)
+total_y = np.append(train_y,train_convert_y, axis = 0)
 # hyper parameters
+total_data = 50000 * 2
 learning_rate = 0.001
 training_epochs = 15
 batch_size = 100
 
 def next_batch(i, batch_size):
-    batch_num = int(50000 / batch_size)
+    batch_num = int(total_data / batch_size)
     if(i > batch_num - 1):
         while(i > batch_num):
             i -= batch_num
         if(i < 0):
             i = 0
-    batch_x = train_x[i * batch_size:(i + 1) * batch_size]
-    batch_y = train_y[i * batch_size:(i + 1) * batch_size]
-    return batch_x, batch_y
-
-def next_converted_batch(i, batch_size):
-    batch_num = int(50000 / batch_size)
-    if(i > batch_num - 1):
-        while(i > batch_num):
-            i -= batch_num
-        if(i < 0):
-            i = 0
-    batch_x = train_convert_x[i * batch_size:(i + 1) * batch_size]
-    batch_y = train_y[i * batch_size:(i + 1) * batch_size]
+    batch_x = total_x[i * batch_size:(i + 1) * batch_size]
+    batch_y = total_y[i * batch_size:(i + 1) * batch_size]
     return batch_x, batch_y
 
 def test_batch():
@@ -87,29 +79,21 @@ class Model:
                                          rate=0.7, training=self.training)
             # Dense Layer with Relu
             #bn4 = tf.layers.batch_normalization(dropout3, training=self.training)
-            conv4 = tf.layers.conv2d(inputs = dropuout3, filters = 256, kernel_size =[3, 3],
-                                    padding="same", activation=tf.nn.relu)
-            dropout4 = tf.layers.dropout(inputs=conv4,
-                                        rate=0.7, training=self.training)
 
-            flat = tf.reshape(dropout4, [-1, 256 * 4 * 4])
+            flat = tf.reshape(dropout3, [-1, 128 * 4 * 4])
             dense1 = tf.layers.dense(inputs=flat,
-                                     units=1024, activation=tf.nn.relu)
+                                     units=625, activation=tf.nn.relu)
             dropout4 = tf.layers.dropout(inputs=dense1,
                                          rate=0.5, training=self.training)
 
-            dense2 = tf.layers.dense(inputs=dropout4,
-                                        units = 512, activation=tf.nn.relu)
-            dropout5 = tf.layers.dropout(inputs=dense2,
-                                        rate=0.5, training=self.training)
             # Logits (no activation) Layer: L5 Final FC 625 inputs -> 10 outputs
-            self.logits = tf.layers.dense(inputs=dropout5, units=10)
+            self.logits = tf.layers.dense(inputs=dropout4, units=10)
 
         #with tf.name_scope('cost'):
             # define cost/loss & optimizer
         self.cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
             logits=self.logits, labels=self.Y))
-        cost_hist = tf.summary.histogram('cost', self.cost)
+        cost_hist = tf.summary.scalar("cost", self.cost)
         self.optimizer = tf.train.AdamOptimizer(
             learning_rate=learning_rate).minimize(self.cost)
 
@@ -140,8 +124,8 @@ print('Learning Started!')
 # train my model
 for epoch in range(training_epochs):
     avg_cost = 0
-    total_batch = int(50000 / batch_size)
-    shuffle = np.arange(500)
+    total_batch = int(total_data / batch_size)
+    shuffle = np.arange(total_batch)
     np.random.shuffle(shuffle)
     for i in range(total_batch):
         batch_x, batch_y = next_batch(shuffle[i], batch_size)
@@ -151,21 +135,5 @@ for epoch in range(training_epochs):
     print('[m1] Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(avg_cost))
     print('[m1] Accuracy:', accuracy)
 
-for epoch in range(training_epochs):
-    avg_cost = 0
-    total_batch = int(50000 / batch_size)
-    shuffle = np.arange(500)
-    np.random.shuffle(shuffle)
-    for i in range(total_batch):
-        batch_convert_x, batch_convert_y = next_converted_batch(shuffle[i], batch_size)
-        c, _, summary, accuracy = m1.train(batch_convert_x, batch_convert_y, merged)
-        avg_cost += c / total_batch
-        train_writer.add_summary(summary,i+training_epochs)
-    print('[m1] Epoch:', '%04d' % (training_epochs + epoch + 1),
-         'cost =', '{:.9f}'.format(avg_cost))
-    print('[m1] Accuracy:', accuracy)
-print('Learning Finished!')
-
-# Test model and check accuracy
 X_t,Y_t = test_batch()
 print('Accuracy:', m1.get_accuracy(X_t, Y_t))
