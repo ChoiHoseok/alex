@@ -13,7 +13,7 @@ total_y = np.append(train_y,train_convert_y, axis = 0)
 # hyper parameters
 total_data = 50000 * 2
 learning_rate = 0.001
-training_epochs = 15
+training_epochs = 200
 batch_size = 100
 
 def next_batch(i, batch_size):
@@ -100,6 +100,7 @@ class Model:
         correct_prediction = tf.equal(
             tf.argmax(self.logits, 1), tf.argmax(self.Y, 1))
         self.accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+        accuracy_scalar = tf.summary.scalar("accuracy", self.accuracy)
 
     def predict(self, x_test, training=False):
         return self.sess.run(self.logits,
@@ -111,29 +112,30 @@ class Model:
                                         self.Y: y_test, self.training: training})
 
     def train(self, x_data, y_data, merged, training=True):
-        return self.sess.run([self.cost, self.optimizer, merged, self.accuracy], feed_dict={
+        return self.sess.run([self.cost, self.optimizer, merged], feed_dict={
             self.X: x_data, self.Y: y_data, self.training: training})
 
 sess = tf.Session()
 m1 = Model(sess, "m1")
 merged = tf.summary.merge_all()
-train_writer = tf.summary.FileWriter('/tmp/logs',sess.graph)
+train_writer = tf.summary.FileWriter('/tmp/logs2',sess.graph)
 sess.run(tf.global_variables_initializer())
 print('Learning Started!')
+total_batch = int(total_data / batch_size)
+shuffle = np.arange(total_batch)
+
 
 # train my model
 for epoch in range(training_epochs):
     avg_cost = 0
-    total_batch = int(total_data / batch_size)
-    shuffle = np.arange(total_batch)
     np.random.shuffle(shuffle)
     for i in range(total_batch):
         batch_x, batch_y = next_batch(shuffle[i], batch_size)
-        c, _, summary, accuracy = m1.train(batch_x, batch_y, merged)
+        c, _, summary = m1.train(batch_x, batch_y, merged)
         avg_cost += c / total_batch
-        train_writer.add_summary(summary,i)
+        train_writer.add_summary(summary, epoch * total_batch + i)
     print('[m1] Epoch:', '%04d' % (epoch + 1), 'cost =', '{:.9f}'.format(avg_cost))
-    print('[m1] Accuracy:', accuracy)
+    #print('[m1] Accuracy:', accuracy)
 
 X_t,Y_t = test_batch()
 print('Accuracy:', m1.get_accuracy(X_t, Y_t))
